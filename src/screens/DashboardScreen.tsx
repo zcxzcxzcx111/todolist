@@ -9,6 +9,7 @@ import TravelDashboard from '../components/TravelDashboard';
 import PostcardScreen from './PostcardScreen';
 import SouvenirScreen from './SouvenirScreen';
 import AchievementScreen from './AchievementScreen';
+import CalendarScreen from './CalendarScreen';
 import Toast, { ToastData, useToastListener, showToast } from '../components/Toast';
 import { StaggerCard, FadeSlideUp, Pulse } from '../components/AnimatedCard';
 import { useStore } from '../hooks/useStore';
@@ -21,6 +22,7 @@ export default function DashboardScreen() {
   const [showPostcards, setShowPostcards] = useState(false);
   const [showSouvenirs, setShowSouvenirs] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newPriority, setNewPriority] = useState<TaskPriority>('normal');
   const [newDeadline, setNewDeadline] = useState<string>('');
@@ -121,6 +123,12 @@ export default function DashboardScreen() {
         {/* 快捷入口 */}
         <FadeSlideUp delay={200}>
           <View style={styles.shortcutRow}>
+            <TouchableOpacity style={styles.shortcutBtn} onPress={() => setShowCalendar(true)} activeOpacity={0.7}>
+              <View style={[styles.shortcutIconBg, { backgroundColor: '#FEF3C7' }]}>
+                <Text style={styles.shortcutEmoji}>📅</Text>
+              </View>
+              <Text style={styles.shortcutText}>日历</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.shortcutBtn} onPress={() => setShowPostcards(true)} activeOpacity={0.7}>
               <View style={[styles.shortcutIconBg, { backgroundColor: colors.accentLight }]}>
                 <Text style={styles.shortcutEmoji}>📮</Text>
@@ -305,6 +313,17 @@ export default function DashboardScreen() {
         citiesVisited={travel.visitedCityIds.length}
         postcards={travel.collectedPostcards.length}
         souvenirs={travel.collectedSouvenirs.length}
+      />
+      <CalendarScreen
+        visible={showCalendar}
+        tasks={tasks}
+        onClose={() => setShowCalendar(false)}
+        onComplete={handleComplete}
+        onDelete={deleteTask}
+        onAddDailyTask={(title, priority) => {
+          addTask({ title, priority, estimatedMinutes: 30, tags: [], isDaily: true });
+          showToast({ type: 'success', title: '每日任务已添加', message: title, emoji: '✅' });
+        }}
       />
     </View>
   );
