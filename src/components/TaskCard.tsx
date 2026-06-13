@@ -1,13 +1,8 @@
 import React, { useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { Task, TaskPriority } from '../types';
-import { colors, typography, spacing, radius, shadow } from '../theme';
-
-const PRIORITY_CONFIG: Record<TaskPriority, { color: string; bg: string; label: string; emoji: string }> = {
-  urgent: { color: colors.urgent, bg: 'rgba(239, 68, 68, 0.08)', label: '紧急', emoji: '🔴' },
-  important: { color: colors.important, bg: 'rgba(245, 158, 11, 0.08)', label: '重要', emoji: '🟡' },
-  normal: { color: colors.normal, bg: 'rgba(59, 130, 246, 0.08)', label: '普通', emoji: '🔵' },
-};
+import { useColors } from '../theme/useColors';
+import { typography, spacing, radius, shadow } from '../theme';
 
 interface TaskCardProps {
   task: Task;
@@ -17,63 +12,61 @@ interface TaskCardProps {
 }
 
 export default function TaskCard({ task, onComplete, onDelete, index = 0 }: TaskCardProps) {
-  const priority = PRIORITY_CONFIG[task.priority];
+  const colors = useColors();
   const isCompleted = task.status === 'completed';
   const isOverdue = task.deadline && new Date(task.deadline) < new Date() && !isCompleted;
 
+  const priorityConfig: Record<TaskPriority, { color: string; bg: string; label: string; emoji: string }> = {
+    urgent: { color: colors.urgent, bg: colors.urgent + '12', label: '紧急', emoji: '🔴' },
+    important: { color: colors.important, bg: colors.important + '12', label: '重要', emoji: '🟡' },
+    normal: { color: colors.normal, bg: colors.normal + '12', label: '普通', emoji: '🔵' },
+  };
+
+  const priority = priorityConfig[task.priority];
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const checkAnim = useRef(new Animated.Value(0)).current;
 
   const handleComplete = () => {
     if (isCompleted) return;
-    // 完成动画
     Animated.sequence([
       Animated.timing(scaleAnim, { toValue: 0.95, duration: 100, useNativeDriver: true }),
       Animated.spring(scaleAnim, { toValue: 1, tension: 80, friction: 6, useNativeDriver: true }),
     ]).start();
-
     Animated.timing(checkAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
-
     onComplete(task.id);
   };
 
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-      <View style={[styles.card, isCompleted && styles.cardCompleted]}>
-        {/* 优先级条 */}
-        <View style={[styles.priorityBar, { backgroundColor: priority.color }]} />
-
-        <View style={styles.row}>
-          {/* 完成按钮 */}
+      <View style={[s.card, { backgroundColor: colors.surface }, isCompleted && s.cardCompleted]}>
+        <View style={[s.priorityBar, { backgroundColor: priority.color }]} />
+        <View style={s.row}>
           <TouchableOpacity
-            style={[styles.checkBtn, isCompleted && { backgroundColor: colors.success, borderColor: colors.success }]}
+            style={[s.checkBtn, { borderColor: priority.color }, isCompleted && { backgroundColor: colors.success, borderColor: colors.success }]}
             onPress={handleComplete}
             activeOpacity={0.7}
           >
-            {isCompleted && (
-              <Animated.Text style={[styles.checkMark, { opacity: checkAnim }]}>✓</Animated.Text>
-            )}
+            {isCompleted && <Animated.Text style={[s.checkMark, { opacity: checkAnim }]}>✓</Animated.Text>}
           </TouchableOpacity>
-
-          {/* 任务信息 */}
-          <View style={styles.info}>
-            <Text style={[styles.title, isCompleted && styles.titleCompleted]} numberOfLines={1}>
+          <View style={s.info}>
+            <Text style={[s.title, { color: colors.textPrimary }, isCompleted && { textDecorationLine: 'line-through', color: colors.textTertiary }]} numberOfLines={1}>
               {task.title}
             </Text>
-            <View style={styles.meta}>
-              <View style={[styles.priorityTag, { backgroundColor: priority.bg }]}>
-                <Text style={[styles.priorityText, { color: priority.color }]}>
-                  {priority.emoji} {priority.label}
-                </Text>
+            <View style={s.meta}>
+              <View style={[s.priorityTag, { backgroundColor: priority.bg }]}>
+                <Text style={[s.priorityText, { color: priority.color }]}>{priority.emoji} {priority.label}</Text>
               </View>
-              <Text style={styles.milesText}>+{task.milesEarned || 0} 里程</Text>
-              {isOverdue && <Text style={styles.overdueText}>已超期</Text>}
+              {task.isDaily && (
+                <View style={[s.dailyTag, { backgroundColor: colors.primaryLight }]}>
+                  <Text style={[s.dailyText, { color: colors.primary }]}>🔄 每日</Text>
+                </View>
+              )}
+              <Text style={[s.milesText, { color: colors.miles }]}>+{task.milesEarned || 0} 里程</Text>
+              {isOverdue && <Text style={[s.overdueText, { color: colors.destructive }]}>已超期</Text>}
             </View>
           </View>
-
-          {/* 删除按钮 */}
-          <TouchableOpacity onPress={() => onDelete(task.id)} style={styles.deleteBtn} activeOpacity={0.6}>
-            <Text style={styles.deleteText}>×</Text>
+          <TouchableOpacity onPress={() => onDelete(task.id)} style={[s.deleteBtn, { backgroundColor: colors.separator }]} activeOpacity={0.6}>
+            <Text style={[s.deleteText, { color: colors.textTertiary }]}>×</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -81,95 +74,22 @@ export default function TaskCard({ task, onComplete, onDelete, index = 0 }: Task
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    paddingLeft: spacing.lg + 4,
-    marginBottom: spacing.md,
-    ...shadow.card,
-    overflow: 'hidden',
-  },
-  cardCompleted: {
-    opacity: 0.65,
-  },
-  priorityBar: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
-    borderTopLeftRadius: radius.lg,
-    borderBottomLeftRadius: radius.lg,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  checkBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  checkMark: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  info: {
-    flex: 1,
-  },
-  title: {
-    ...typography.headline,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  titleCompleted: {
-    textDecorationLine: 'line-through',
-    color: colors.textTertiary,
-  },
-  meta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  priorityTag: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-  },
-  priorityText: {
-    ...typography.caption2,
-    fontWeight: '600',
-  },
-  milesText: {
-    ...typography.caption1,
-    color: colors.miles,
-    fontWeight: '700',
-  },
-  overdueText: {
-    ...typography.caption2,
-    color: colors.destructive,
-    fontWeight: '700',
-  },
-  deleteBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: spacing.sm,
-    backgroundColor: 'rgba(0,0,0,0.04)',
-  },
-  deleteText: {
-    fontSize: 20,
-    color: colors.textTertiary,
-    fontWeight: '300',
-  },
+const s = StyleSheet.create({
+  card: { borderRadius: 18, padding: 16, paddingLeft: 20, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3, overflow: 'hidden' },
+  cardCompleted: { opacity: 0.65 },
+  priorityBar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, borderTopLeftRadius: 18, borderBottomLeftRadius: 18 },
+  row: { flexDirection: 'row', alignItems: 'center' },
+  checkBtn: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  checkMark: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  info: { flex: 1 },
+  title: { fontSize: 17, fontWeight: '600', marginBottom: 4 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  priorityTag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 100 },
+  priorityText: { fontSize: 11, fontWeight: '600' },
+  dailyTag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 100 },
+  dailyText: { fontSize: 11, fontWeight: '600' },
+  milesText: { fontSize: 12, fontWeight: '700' },
+  overdueText: { fontSize: 11, fontWeight: '700' },
+  deleteBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
+  deleteText: { fontSize: 20, fontWeight: '300' },
 });

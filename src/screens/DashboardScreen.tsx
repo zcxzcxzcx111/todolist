@@ -12,15 +12,17 @@ import AchievementScreen from './AchievementScreen';
 import CalendarScreen from './CalendarScreen';
 import SettingsScreen from './SettingsScreen';
 import { useTheme } from '../theme/ThemeContext';
+import { useColors } from '../theme/useColors';
 import Toast, { ToastData, useToastListener, showToast } from '../components/Toast';
 import { StaggerCard, FadeSlideUp, Pulse } from '../components/AnimatedCard';
 import { useStore } from '../hooks/useStore';
 import { onTaskComplete } from '../services/eventService';
-import { colors, typography, spacing, radius, shadow } from '../theme';
+import { typography, spacing, radius, shadow } from '../theme';
 
 export default function DashboardScreen() {
   const { tasks, travel, profile, stats, isLoaded, addTask, completeTask, deleteTask } = useStore();
-  const { currentTheme, colors: themeColors, setTheme } = useTheme();
+  const { currentTheme, setTheme } = useTheme();
+  const colors = useColors();
   const [showAdd, setShowAdd] = useState(false);
   const [showPostcards, setShowPostcards] = useState(false);
   const [showSouvenirs, setShowSouvenirs] = useState(false);
