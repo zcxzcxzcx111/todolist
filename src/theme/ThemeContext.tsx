@@ -1,45 +1,71 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { themePresets, ThemePreset, getThemePreset } from './presets';
-import { typography, spacing, radius, shadow } from './index';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { themePresets, getThemePreset } from './presets';
+import { colors, updateColors, shadow } from './index';
 
 const THEME_STORAGE_KEY = 'traveltodo_theme';
 
 interface ThemeContextType {
   currentTheme: string;
-  colors: ThemePreset['colors'];
   setTheme: (themeId: string) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType>({
   currentTheme: 'sunset',
-  colors: themePresets[0].colors,
   setTheme: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [currentTheme, setCurrentTheme] = useState('sunset');
+  const [, forceUpdate] = useState(0);
 
   // 加载保存的主题
   useEffect(() => {
     if (typeof window !== 'undefined' && window.localStorage) {
       const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
       if (saved && themePresets.find(t => t.id === saved)) {
-        setCurrentTheme(saved);
+        applyTheme(saved);
       }
     }
   }, []);
 
-  const setTheme = (themeId: string) => {
+  const applyTheme = (themeId: string) => {
+    const preset = getThemePreset(themeId);
+    // 更新全局 colors 对象
+    updateColors({
+      primary: preset.colors.primary,
+      primaryLight: preset.colors.primaryLight,
+      primaryDark: preset.colors.primaryDark,
+      accent: preset.colors.accent,
+      accentLight: preset.colors.accentLight,
+      success: preset.colors.success,
+      successLight: preset.colors.successLight,
+      background: preset.colors.background,
+      surface: preset.colors.surface,
+      textPrimary: preset.colors.textPrimary,
+      textSecondary: preset.colors.textSecondary,
+      textTertiary: preset.colors.textTertiary,
+      separator: preset.colors.separator,
+      gradientPrimary: preset.colors.gradientPrimary,
+      gradientTravel: preset.colors.gradientTravel,
+      gradientMiles: preset.colors.gradientMiles,
+      gradientSuccess: preset.colors.gradientSuccess,
+    });
+    // 更新 shadow 的 glow 颜色
+    shadow.glow.shadowColor = preset.colors.primary;
     setCurrentTheme(themeId);
+    // 强制重新渲染
+    forceUpdate(n => n + 1);
+  };
+
+  const setTheme = useCallback((themeId: string) => {
+    applyTheme(themeId);
     if (typeof window !== 'undefined' && window.localStorage) {
       window.localStorage.setItem(THEME_STORAGE_KEY, themeId);
     }
-  };
-
-  const colors = getThemePreset(currentTheme).colors;
+  }, []);
 
   return (
-    <ThemeContext.Provider value={{ currentTheme, colors, setTheme }}>
+    <ThemeContext.Provider value={{ currentTheme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -48,5 +74,3 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 export function useTheme() {
   return useContext(ThemeContext);
 }
-
-export { typography, spacing, radius, shadow };
