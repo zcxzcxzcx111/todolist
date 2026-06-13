@@ -10,6 +10,8 @@ import PostcardScreen from './PostcardScreen';
 import SouvenirScreen from './SouvenirScreen';
 import AchievementScreen from './AchievementScreen';
 import CalendarScreen from './CalendarScreen';
+import SettingsScreen from './SettingsScreen';
+import { useTheme } from '../theme/ThemeContext';
 import Toast, { ToastData, useToastListener, showToast } from '../components/Toast';
 import { StaggerCard, FadeSlideUp, Pulse } from '../components/AnimatedCard';
 import { useStore } from '../hooks/useStore';
@@ -18,11 +20,13 @@ import { colors, typography, spacing, radius, shadow } from '../theme';
 
 export default function DashboardScreen() {
   const { tasks, travel, profile, stats, isLoaded, addTask, completeTask, deleteTask } = useStore();
+  const { currentTheme, colors: themeColors, setTheme } = useTheme();
   const [showAdd, setShowAdd] = useState(false);
   const [showPostcards, setShowPostcards] = useState(false);
   const [showSouvenirs, setShowSouvenirs] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newPriority, setNewPriority] = useState<TaskPriority>('normal');
   const [newDeadline, setNewDeadline] = useState<string>('');
@@ -113,8 +117,15 @@ export default function DashboardScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Header */}
         <Animated.View style={[styles.header, { opacity: headerAnim }]}>
-          <Text style={styles.greeting}>你好，旅行者 👋</Text>
-          <Text style={styles.quote}>开始做，就对了。</Text>
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.greeting}>你好，旅行者 👋</Text>
+              <Text style={styles.quote}>开始做，就对了。</Text>
+            </View>
+            <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowSettings(true)} activeOpacity={0.7}>
+              <Text style={styles.settingsIcon}>⚙️</Text>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
 
         {/* Travel Dashboard */}
@@ -325,6 +336,29 @@ export default function DashboardScreen() {
           showToast({ type: 'success', title: '每日任务已添加', message: title, emoji: '✅' });
         }}
       />
+      <SettingsScreen
+        visible={showSettings}
+        onClose={() => setShowSettings(false)}
+        currentTheme={currentTheme}
+        onThemeChange={setTheme}
+        onExportData={() => {
+          const data = { tasks, travel, profile };
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = 'traveltodo-backup.json';
+          link.click();
+          URL.revokeObjectURL(url);
+          showToast({ type: 'success', title: '导出成功', message: '数据已下载', emoji: '📤' });
+        }}
+        onClearData={() => {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            window.localStorage.clear();
+          }
+          showToast({ type: 'event', title: '数据已清除', message: '刷新页面生效', emoji: '🗑️' });
+        }}
+      />
     </View>
   );
 }
@@ -336,8 +370,15 @@ const styles = StyleSheet.create({
   loadingText: { ...typography.headline, color: colors.textSecondary },
   scroll: { paddingTop: 60 },
   header: { paddingHorizontal: spacing.xl, marginBottom: spacing.xl },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   greeting: { ...typography.title1, color: colors.textPrimary },
   quote: { ...typography.subhead, color: colors.textSecondary, marginTop: spacing.xs },
+  settingsBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center',
+    ...shadow.subtle,
+  },
+  settingsIcon: { fontSize: 20 },
   shortcutRow: { flexDirection: 'row', paddingHorizontal: spacing.xl, marginBottom: spacing.xl, gap: spacing.md },
   shortcutBtn: { flex: 1, alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, paddingVertical: spacing.lg, ...shadow.card },
   shortcutIconBg: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.sm },
