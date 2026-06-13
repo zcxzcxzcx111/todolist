@@ -10,7 +10,7 @@ export function useStore() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // 启动时加载数据
+  // 启动时加载数据 + 重置每日任务
   useEffect(() => {
     (async () => {
       const [loadedTasks, loadedTravel, loadedProfile] = await Promise.all([
@@ -19,7 +19,23 @@ export function useStore() {
         storage.loadProfile(),
       ]);
 
-      setTasks(loadedTasks);
+      // 重置每日任务
+      const today = new Date().toISOString().split('T')[0];
+      const resetTasks = loadedTasks.map(t => {
+        if (t.isDaily && t.dailyResetDate !== today) {
+          // 新的一天，重置每日任务状态
+          return {
+            ...t,
+            status: 'pending' as TaskStatus,
+            completedAt: undefined,
+            dailyResetDate: today,
+            milesEarned: 0,
+          };
+        }
+        return t;
+      });
+
+      setTasks(resetTasks);
       setTravel(loadedTravel || createDefaultTravel());
       setProfile(loadedProfile || createDefaultProfile());
       setIsLoaded(true);
@@ -44,6 +60,7 @@ export function useStore() {
 
   // ========== 任务操作 ==========
   const addTask = useCallback((task: Omit<Task, 'id' | 'createdAt' | 'status' | 'pomodorosCompleted' | 'milesEarned'>) => {
+    const today = new Date().toISOString().split('T')[0];
     const newTask: Task = {
       ...task,
       id: generateId(),
@@ -51,6 +68,8 @@ export function useStore() {
       status: 'pending',
       pomodorosCompleted: 0,
       milesEarned: 0,
+      isDaily: task.isDaily || false,
+      dailyResetDate: task.isDaily ? today : undefined,
     };
     setTasks(prev => [newTask, ...prev]);
     return newTask;
@@ -79,7 +98,6 @@ export function useStore() {
         newTravel.totalMiles += finalMiles;
         newTravel.currentMiles += finalMiles;
 
-        // 检查是否到达新城市
         const nextCity = getNextCityMiles(newTravel.currentCityId, newTravel.visitedCityIds);
         if (nextCity && newTravel.currentMiles >= nextCity.miles) {
           newTravel.currentCityId = nextCity.city.id;
@@ -156,16 +174,19 @@ export function useStore() {
   // ========== 统计 ==========
   const stats = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
-    const todayTasks = tasks.filter(t => t.createdAt.startsWith(today));
+    const todayTasks = tasks.filter(t => t.createdAt.startsWith(today) || (t.isDaily && t.dailyResetDate === today));
     const completedToday = todayTasks.filter(t => t.status === 'completed');
     const pendingTasks = tasks.filter(t => t.status === 'pending' || t.status === 'in_progress');
     const overdueTasks = tasks.filter(t => t.deadline && new Date(t.deadline) < new Date() && t.status !== 'completed');
+    const dailyTasks = tasks.filter(t => t.isDaily);
 
     return {
       todayTotal: todayTasks.length,
       todayCompleted: completedToday.length,
       pendingCount: pendingTasks.length,
       overdueCount: overdueTasks.length,
+      dailyCount: dailyTasks.length,
+      dailyCompleted: dailyTasks.filter(t => t.status === 'completed').length,
     };
   }, [tasks]);
 

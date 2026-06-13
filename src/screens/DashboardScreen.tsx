@@ -24,6 +24,7 @@ export default function DashboardScreen() {
   const [newTitle, setNewTitle] = useState('');
   const [newPriority, setNewPriority] = useState<TaskPriority>('normal');
   const [newDeadline, setNewDeadline] = useState<string>('');
+  const [newIsDaily, setNewIsDaily] = useState(false);
   const [toast, setToast] = useState<ToastData | null>(null);
 
   const headerAnim = useRef(new Animated.Value(0)).current;
@@ -46,7 +47,9 @@ export default function DashboardScreen() {
     );
   }
 
-  const pendingTasks = tasks.filter(t => t.status === 'pending' || t.status === 'in_progress');
+  const today = new Date().toISOString().split('T')[0];
+  const dailyTasks = tasks.filter(t => t.isDaily && t.dailyResetDate === today);
+  const pendingTasks = tasks.filter(t => !t.isDaily && (t.status === 'pending' || t.status === 'in_progress'));
 
   const handleAdd = () => {
     if (!newTitle.trim()) return;
@@ -57,10 +60,12 @@ export default function DashboardScreen() {
       estimatedMinutes,
       tags: [],
       deadline: newDeadline || undefined,
+      isDaily: newIsDaily,
     });
     setNewTitle('');
     setNewPriority('normal');
     setNewDeadline('');
+    setNewIsDaily(false);
     setShowAdd(false);
   };
 
@@ -160,6 +165,26 @@ export default function DashboardScreen() {
           </View>
         </FadeSlideUp>
 
+        {/* 每日任务 */}
+        {dailyTasks.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>🔄 每日任务</Text>
+              <Text style={styles.sectionCount}>{dailyTasks.filter(t => t.status === 'completed').length}/{dailyTasks.length}</Text>
+            </View>
+            {dailyTasks.map((task, index) => (
+              <StaggerCard key={task.id} index={index}>
+                <TaskCard
+                  task={task}
+                  onComplete={handleComplete}
+                  onDelete={deleteTask}
+                  index={index}
+                />
+              </StaggerCard>
+            ))}
+          </View>
+        )}
+
         {/* 待办任务 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📋 待办任务</Text>
@@ -241,6 +266,21 @@ export default function DashboardScreen() {
               ))}
             </View>
 
+            {/* 每日任务开关 */}
+            <TouchableOpacity
+              style={styles.dailyToggle}
+              onPress={() => setNewIsDaily(!newIsDaily)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.dailyCheckbox, newIsDaily && styles.dailyCheckboxActive]}>
+                {newIsDaily && <Text style={styles.dailyCheckMark}>✓</Text>}
+              </View>
+              <View style={styles.dailyTextWrap}>
+                <Text style={styles.dailyLabel}>🔄 每日重复</Text>
+                <Text style={styles.dailyHint}>每天自动重置，养成好习惯</Text>
+              </View>
+            </TouchableOpacity>
+
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowAdd(false)}>
                 <Text style={styles.cancelText}>取消</Text>
@@ -285,7 +325,9 @@ const styles = StyleSheet.create({
   shortcutEmoji: { fontSize: 22 },
   shortcutText: { ...typography.caption1, color: colors.textPrimary, fontWeight: '600' },
   section: { paddingHorizontal: spacing.xl, marginBottom: spacing.xl },
-  sectionTitle: { ...typography.headline, color: colors.textPrimary, marginBottom: spacing.md },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  sectionTitle: { ...typography.headline, color: colors.textPrimary },
+  sectionCount: { ...typography.caption1, color: colors.primary, fontWeight: '600' },
   progressCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, ...shadow.card },
   progressBar: { height: 8, backgroundColor: colors.primaryLight, borderRadius: 4, overflow: 'hidden', marginBottom: spacing.sm },
   progressFill: { height: '100%', backgroundColor: colors.success, borderRadius: 4 },
@@ -312,6 +354,23 @@ const styles = StyleSheet.create({
   deadlineBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   deadlineBtnText: { ...typography.caption1, color: colors.textSecondary },
   deadlineBtnTextActive: { color: '#FFF', fontWeight: '600' },
+  dailyToggle: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.background, borderRadius: radius.lg,
+    padding: spacing.lg, marginBottom: spacing.xl,
+    borderWidth: 1.5, borderColor: colors.separator,
+  },
+  dailyCheckbox: {
+    width: 24, height: 24, borderRadius: 8,
+    borderWidth: 2, borderColor: colors.separator,
+    justifyContent: 'center', alignItems: 'center',
+    marginRight: spacing.md,
+  },
+  dailyCheckboxActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  dailyCheckMark: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  dailyTextWrap: { flex: 1 },
+  dailyLabel: { ...typography.headline, color: colors.textPrimary },
+  dailyHint: { ...typography.caption1, color: colors.textSecondary, marginTop: 2 },
   modalActions: { flexDirection: 'row', gap: spacing.md },
   cancelBtn: { flex: 1, paddingVertical: spacing.md, borderRadius: radius.md, alignItems: 'center', backgroundColor: colors.background },
   cancelText: { ...typography.headline, color: colors.textSecondary },

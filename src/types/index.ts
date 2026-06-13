@@ -17,6 +17,8 @@ export interface Task {
   tags: string[];
   pomodorosCompleted: number;
   milesEarned: number;
+  isDaily?: boolean; // 是否每日任务
+  dailyResetDate?: string; // 上次重置日期
 }
 
 // ========== 番茄钟 ==========
