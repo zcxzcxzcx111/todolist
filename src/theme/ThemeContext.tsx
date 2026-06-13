@@ -16,7 +16,6 @@ const ThemeContext = createContext<ThemeContextType>({
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [currentTheme, setCurrentTheme] = useState('sunset');
-  const [, forceUpdate] = useState(0);
 
   // 加载保存的主题
   useEffect(() => {
@@ -50,11 +49,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       gradientMiles: preset.colors.gradientMiles,
       gradientSuccess: preset.colors.gradientSuccess,
     });
-    // 更新 shadow 的 glow 颜色
+    // 更新 shadow
     shadow.glow.shadowColor = preset.colors.primary;
     setCurrentTheme(themeId);
-    // 强制重新渲染
-    forceUpdate(n => n + 1);
   };
 
   const setTheme = useCallback((themeId: string) => {
